@@ -1,5 +1,7 @@
 import requests
 import time
+import json
+import csv
 from urllib.robotparser import RobotFileParser
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
@@ -137,6 +139,70 @@ def extract_element_data(soup, container_selector, data_mapping):
     return extracted_data
 
 
+def structure_scraped_data(url, extracted_data, timestamp=None):
+    if timestamp is None:
+        from datetime import datetime
+        timestamp = datetime.now().isoformat()
+    
+    structured_data = {
+        'url': url,
+        'timestamp': timestamp,
+        'data': extracted_data
+    }
+    
+    return structured_data
+
+
+def save_to_json(data, filename='data.json'):
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        print(f"Data successfully saved to {filename}")
+        return True
+    except Exception as e:
+        print(f"Error saving to JSON: {e}")
+        return False
+
+
+def save_to_csv(data, filename='data.csv'):
+    try:
+        if not data:
+            print("No data to save to CSV")
+            return False
+        
+        if isinstance(data, dict):
+            data = [data]
+        
+        if not data:
+            print("Empty data list")
+            return False
+        
+        fieldnames = set()
+        for item in data:
+            if isinstance(item, dict):
+                fieldnames.update(item.keys())
+            elif isinstance(item, str):
+                fieldnames.add('content')
+        
+        fieldnames = list(fieldnames)
+        
+        with open(filename, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            for item in data:
+                if isinstance(item, dict):
+                    writer.writerow(item)
+                elif isinstance(item, str):
+                    writer.writerow({'content': item})
+        
+        print(f"Data successfully saved to {filename}")
+        return True
+    except Exception as e:
+        print(f"Error saving to CSV: {e}")
+        return False
+
+
 if __name__ == "__main__":
     test_url = "https://httpbin.org/user-agent"
     user_agent = "PoliteScraperBot/1.0"
@@ -198,6 +264,26 @@ if __name__ == "__main__":
             }
             extracted_data = extract_element_data(soup, 'body', data_mapping)
             print(f"Extracted structured data: {extracted_data}")
+            
+            print("\n--- Testing data structuring ---")
+            structured_data = structure_scraped_data(html_test_url, extracted_data)
+            print(f"Structured data: {structured_data}")
+            
+            print("\n--- Testing JSON export ---")
+            json_success = save_to_json(structured_data, 'data.json')
+            print(f"JSON export success: {json_success}")
+            
+            print("\n--- Testing CSV export ---")
+            csv_success = save_to_csv([structured_data], 'data.csv')
+            print(f"CSV export success: {csv_success}")
+            
+            print("\n--- Testing multiple items CSV export ---")
+            multiple_items = [
+                structure_scraped_data(html_test_url, {'title': 'Test 1', 'description': 'Description 1'}),
+                structure_scraped_data(html_test_url, {'title': 'Test 2', 'description': 'Description 2'}),
+            ]
+            csv_multi_success = save_to_csv(multiple_items, 'data_multiple.csv')
+            print(f"Multiple items CSV export success: {csv_multi_success}")
         else:
             print("HTML fetch failed!")
     else:
