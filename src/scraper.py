@@ -2,6 +2,7 @@ import requests
 import time
 from urllib.robotparser import RobotFileParser
 from urllib.parse import urlparse
+from bs4 import BeautifulSoup
 
 
 def get_robots_txt_url(url):
@@ -95,6 +96,47 @@ def fetch_page(url, headers=None, check_robots=True, rate_limit=True, min_delay=
         return None
 
 
+def parse_html(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    return soup
+
+
+def extract_elements(soup, selector, attribute=None):
+    elements = soup.select(selector)
+    
+    if attribute:
+        return [elem.get(attribute) for elem in elements if elem.get(attribute)]
+    else:
+        return [elem.get_text(strip=True) for elem in elements]
+
+
+def extract_element_data(soup, container_selector, data_mapping):
+    container = soup.select_one(container_selector)
+    if not container:
+        return None
+    
+    extracted_data = {}
+    
+    for field_name, selector_info in data_mapping.items():
+        if isinstance(selector_info, str):
+            selector = selector_info
+            attribute = None
+        else:
+            selector = selector_info['selector']
+            attribute = selector_info.get('attribute')
+        
+        element = container.select_one(selector)
+        if element:
+            if attribute:
+                extracted_data[field_name] = element.get(attribute)
+            else:
+                extracted_data[field_name] = element.get_text(strip=True)
+        else:
+            extracted_data[field_name] = None
+    
+    return extracted_data
+
+
 if __name__ == "__main__":
     test_url = "https://httpbin.org/user-agent"
     user_agent = "PoliteScraperBot/1.0"
@@ -131,5 +173,32 @@ if __name__ == "__main__":
         error_url = "https://httpbin.org/status/503"
         error_response = fetch_page(error_url, rate_limit=False)
         print(f"503 test response: {error_response}")
+        
+        print("\n--- Testing HTML parsing with BeautifulSoup ---")
+        html_test_url = "https://httpbin.org/html"
+        html_response = fetch_page(html_test_url, rate_limit=False)
+        
+        if html_response:
+            print(f"HTML fetch successful! Status: {html_response.status_code}")
+            
+            soup = parse_html(html_response.text)
+            print(f"Parsed HTML with BeautifulSoup. Title: {soup.title.string if soup.title else 'No title'}")
+            
+            print("\n--- Testing element extraction ---")
+            h1_elements = extract_elements(soup, 'h1')
+            print(f"H1 elements found: {h1_elements}")
+            
+            links = extract_elements(soup, 'a', attribute='href')
+            print(f"Link hrefs found: {links}")
+            
+            print("\n--- Testing structured data extraction ---")
+            data_mapping = {
+                'title': 'h1',
+                'description': 'p',
+            }
+            extracted_data = extract_element_data(soup, 'body', data_mapping)
+            print(f"Extracted structured data: {extracted_data}")
+        else:
+            print("HTML fetch failed!")
     else:
         print("\nRequest blocked by robots.txt!")
