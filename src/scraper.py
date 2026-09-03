@@ -3,7 +3,7 @@ import requests
 
 def get_custom_headers():
     return {
-        "User-Agent": "PoliteScraperBot/1.0 (+http://github.com/0xfelaback/flyrank-polite-scraper)",
+        "User-Agent": "PoliteScraperBot/1.0 (+https://github.com/0xfelaback/flyrank_polite-scraper)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
         "Accept-Encoding": "gzip, deflate",
